@@ -26,7 +26,7 @@ describe('Example 6.9', () => {
           C: {
             initial: 'G',
             on: {
-              4: 'B.E'
+              4: 'E'
             },
             states: {
               F: {},
