@@ -279,12 +279,23 @@ class StateNode implements StateNodeConfig {
       const newOn = {};
       Object.keys(this.on).forEach(event => {
         if (this.on && this.on[event]) {
-          console.log(typeof this.on[event]);
-          const e = this.on[event];
-          if (typeof e === 'string') {
-            newOn[event] = this.lookForClosestState(e);
-          } else {
-            newOn[event] = this.on[event];
+          const oldTransition: Transition | undefined = this.on[event];
+          if (typeof oldTransition === 'string') {
+            newOn[event] = this.lookForClosestState(oldTransition);
+          } else if (Array.isArray(oldTransition)) {
+            // TargetTransitionConfig[]
+            newOn[event] = oldTransition.map(transition => ({
+              ...transition,
+              target: this.lookForClosestState(transition.target)
+            }));
+          } else if (oldTransition) {
+            const ot: Record<string, TransitionConfig> = oldTransition;
+            newOn[event] = {};
+            Object.keys(ot).forEach(
+              transition =>
+                (newOn[event][this.lookForClosestState(transition)] =
+                  oldTransition[transition])
+            );
           }
         }
       });
@@ -301,11 +312,11 @@ class StateNode implements StateNodeConfig {
     if (this.states && this.states[name]) {
       return '#' + this.states[name].id;
     }
-    const names: string[] = [];
+    const candidateNames: string[] = [];
     let depth: number = 1;
     const endsWithName = '.' + name;
-    while (this.aggregateStates(depth, names)) {
-      const found = names
+    while (this.aggregateStates(depth, candidateNames)) {
+      const found = candidateNames
         .filter(candidate => !!candidate)
         .filter(candidate => candidate.endsWith(endsWithName));
       if (found.length > 1) {
@@ -318,7 +329,7 @@ class StateNode implements StateNodeConfig {
         return '#' + found[0];
       }
       depth++;
-      names.length = 0;
+      candidateNames.length = 0;
     }
 
     if (this.parent) {
