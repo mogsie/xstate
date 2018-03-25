@@ -261,8 +261,8 @@ class StateNode implements StateNodeConfig {
         .filter(candidate => candidate.endsWith(endsWithName));
       if (found.length > 1) {
         throw new Error(
-          `Ambiguous reference to '${name}', ${found.length} target states were found.  It was specified in the state '${this
-            .id}'.`
+          `Ambiguous reference to '${name}', ${found.length} target states were found.  ` +
+            `It was specified in the state '${this.id}'.`
         );
       }
       if (found.length == 1) {
