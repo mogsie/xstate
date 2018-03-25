@@ -107,6 +107,10 @@ class StateNode implements StateNodeConfig {
       : undefined;
     this.data = config.data;
     this.activities = config.activities;
+    if (!this.parent) {
+      console.log('Rehashing machine', this.id);
+      this.rehash();
+    }
   }
   public getStateNodes(state: StateValue | State): StateNode[] {
     const stateValue =
@@ -209,6 +213,82 @@ class StateNode implements StateNodeConfig {
     }
 
     return nextState;
+  }
+  private rehash() {
+    if (this.on) {
+      const newOn = {};
+      Object.keys(this.on).forEach(event => {
+        if (this.on && this.on[event]) {
+          console.log(typeof this.on[event]);
+          const e = this.on[event];
+          if (typeof e === 'string') {
+            newOn[event] = this.lookForClosestState(e);
+          } else {
+            newOn[event] = this.on[event];
+          }
+        }
+      });
+      this.on = newOn;
+    }
+
+    // Also do children...
+    Object.keys(this.states).forEach(key => this.states[key].rehash());
+  }
+  private lookForClosestState(name: string): string {
+    if (this.parent && this.parent.states && this.parent.states[name]) {
+      return '#' + this.parent.states[name].id;
+    }
+    if (this.states && this.states[name]) {
+      return '#' + this.states[name].id;
+    }
+    const names: string[] = [];
+    let depth: number = 1;
+    const endsWithName = '.' + name;
+    while (this.aggregateStates(depth, names)) {
+      const found = names
+        .filter(candidate => !!candidate)
+        .filter(candidate => candidate.endsWith(endsWithName));
+      if (found.length > 1) {
+        throw new Error('Ambiguity!');
+      }
+      if (found.length == 1) {
+        console.log('name', name);
+        console.log('names', names);
+        console.log('found', found);
+        return '#' + found[0];
+      }
+      depth++;
+      names.length = 0;
+    }
+
+    if (this.parent) {
+      console.log('bubbling up one level', !!this.parent);
+      return this.parent.lookForClosestState(name);
+    }
+
+    // TODO when proximity finds nothing, quit...
+    return 'XXX';
+  }
+  private aggregateStates(level: number, names: string[]): boolean {
+    let states = {};
+    if (this.states) {
+      states = this.states;
+    } else if (this.config && this.config.states) {
+      states = this.config.states;
+    }
+    const substates = Object.keys(states).map(name => states[name]);
+    if (level == 1) {
+      names.push(...substates.map(state => state.id));
+      return !!substates.find(state => !!state.states);
+    } else {
+      let result: boolean = false;
+      substates.forEach(state => {
+        if (state.aggregateStates) {
+          result = state.aggregateStates(level - 1, names) || result;
+        }
+      });
+      return result;
+    }
   }
   private stateTransitionToState(
     stateTransition: StateTransition,
