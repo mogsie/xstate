@@ -3,6 +3,7 @@ import { State } from './State';
 
 export type EventType = string | number;
 export type ActionType = string | number;
+export type Targets = string | Array<string>;
 
 export interface EventObject {
   type: EventType;
@@ -33,7 +34,7 @@ export interface TransitionConfig {
 }
 
 export interface TargetTransitionConfig extends TransitionConfig {
-  target: string | string[];
+  target: Targets;
 }
 
 export type ConditionalTransitionConfig = TargetTransitionConfig[];

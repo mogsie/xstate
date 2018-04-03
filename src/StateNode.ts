@@ -9,6 +9,7 @@ import {
 } from './utils';
 import {
   Event,
+  Targets,
   StateValue,
   Transition,
   Action,
@@ -280,6 +281,7 @@ class StateNode implements StateNodeConfig {
       Object.keys(this.on).forEach(event => {
         if (this.on && this.on[event]) {
           const oldTransition: Transition | undefined = this.on[event];
+          // Transition = target | {target:{cond}} | [ {target}, {target}.. ]
           if (typeof oldTransition === 'string') {
             newOn[event] = this.lookForClosestState(oldTransition);
           } else if (Array.isArray(oldTransition)) {
@@ -293,7 +295,7 @@ class StateNode implements StateNodeConfig {
             newOn[event] = {};
             Object.keys(ot).forEach(
               transition =>
-                (newOn[event][this.lookForClosestState(transition)] =
+                (newOn[event][this.lookForClosestState(transition) as string] =
                   oldTransition[transition])
             );
           }
@@ -305,7 +307,12 @@ class StateNode implements StateNodeConfig {
     // Also do children...
     Object.keys(this.states).forEach(key => this.states[key].rehash());
   }
-  private lookForClosestState(name: string): string {
+  private lookForClosestState(name: Targets): Targets {
+    if (Array.isArray(name)) {
+      return name.map(item =>
+        this.lookForClosestState(item as string)
+      ) as Targets;
+    }
     if (this.parent && this.parent.states && this.parent.states[name]) {
       return '#' + this.parent.states[name].id;
     }
